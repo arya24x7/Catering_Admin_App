@@ -1,4 +1,4 @@
-import React,{useContext,useEffect} from 'react';
+import React,{useContext,useEffect, useState} from 'react';
 import { View, StyleSheet,FlatList,ScrollView, TextInput } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text, BottomNavigation, Button,Modal } from 'react-native-paper';
@@ -10,14 +10,14 @@ import firestore from '@react-native-firebase/firestore';
 
 const Tab = createBottomTabNavigator();
 
-const orderList = [
-  {ID: 1 , Name: "Neha",Phone: "9876543210",Date: "23-06-23"},
-  {ID: 2 , Name: "Abcd",Phone: "9876543120",Date: "22-06-23"},
-  {ID: 3 , Name: "Wxyz",Phone: "9876543201",Date: "21-06-23"},
-  {ID: 4 , Name: "Mnop",Phone: "9876542310",Date: "20-06-23"},
-  {ID: 5 , Name: "Qrst",Phone: "8976542310",Date: "19-06-23"},
-  {ID: 6 , Name: "Uvwx",Phone: "9867542310",Date: "18-06-23"},
-  {ID: 7 , Name: "Efdg",Phone: "9875642310",Date: "17-06-23"},
+const dummyorderList = [
+  // {ID: 1 , Name: "Neha",Phone: "9876543210",Date: "23-06-23"},
+  // {ID: 2 , Name: "Abcd",Phone: "9876543120",Date: "22-06-23"},
+  // {ID: 3 , Name: "Wxyz",Phone: "9876543201",Date: "21-06-23"},
+  // {ID: 4 , Name: "Mnop",Phone: "9876542310",Date: "20-06-23"},
+  // {ID: 5 , Name: "Qrst",Phone: "8976542310",Date: "19-06-23"},
+  // {ID: 6 , Name: "Uvwx",Phone: "9867542310",Date: "18-06-23"},
+  // {ID: 7 , Name: "Efdg",Phone: "9875642310",Date: "17-06-23"},
 ];
 
 const Menu = [
@@ -28,9 +28,69 @@ const Menu = [
   {ID: 5 , Name: "Kesari Bath"},
 ];
 
+// const getOrderDetails = async () => {
+//   try {
+//     const snapshot = await firestore().collection('orderDetails').get();
+//     const namesArray = [];
+//     snapshot.docs.forEach((doc) => {
+//       const name = doc.data().name;
+//       namesArray.push(name);
+//     });
+//     const formatedNamesArr = namesArray.map((element ,index)=>({ID: index+1,name:element}))
+//     console.log(namesArray);
+//     console.log(formatedNamesArr)
+//     setOrderList(formatedNamesArr) // Array containing all names
+//   } catch (error) {
+//     console.error('Error getting order details:', error);
+//   }
+//   return(orderList);
+// };
 
 
 function HomeScreen({ navigation }) {
+  const [orderList, setOrderList] = useState(dummyorderList);
+  //getOrderDetails();
+  useEffect(() => {
+    const getOrderDetails = async () => {
+      try {
+        const snapshot = await firestore().collection('orderDetails').get();
+      const namesArray = [];
+      const datesArr = [];
+      const userIdArr = [];
+
+      snapshot.docs.forEach(async (doc) => {
+        userIdArr.push(doc.id)
+        const datesArrIn = await doc.data().dates;
+        //console.log("out",datesArrIn)
+        for(const dates of datesArrIn){
+          // console.log("loop",dates)
+          datesArr.push(dates);
+        const detailsSnapshot = await doc.ref.collection(dates).doc("details").get();
+        const name = detailsSnapshot.data().name;
+        namesArray.push(name);
+        }
+        //console.log(name);
+        const formattedNames = namesArray.map((name, index) => ({ ID: index + 1, Name: name,Date:datesArr[index],username: userIdArr[index] }));
+        setOrderList(formattedNames)
+      });
+            } catch (error) {
+              console.error('Error getting order details:', error);
+            }
+          };
+
+          getOrderDetails();
+
+          
+  }, []);
+  const handleCustomerInfo = (userID,date) =>{
+    navigation.navigate('CustomerDetails',{date,userID})
+   // console.log("details sent",date,userID)
+  }
+  const handleOrderInfo =(userID,date) =>{
+    navigation.navigate('OrderedItems',{date,userID})
+  }
+  
+
 return (
   <ScrollView nestedScrollEnabled={true}>
       <FlatList
@@ -38,12 +98,15 @@ return (
           style={{flex: 1, marginTop: 40}}
           renderItem={({item}) => (
               <View style={styles.container1}>
-                  <View style={{flexDirection:'row',justifyContent:'space-between'}}>
+                  <View style={{flexDirection:'row',justifyContent:'flex-start'}}>
                       <Text style={{fontSize:20,fontWeight:'bold'}}>{item.Name}</Text>
                   </View>
+                  <View style={{flexDirection:'row',justifyContent:'flex-end'}}>
+                      <Text style={{fontSize:20,fontWeight:'bold'}}>{item.Date}</Text>
+                  </View>
                   <View style={{flexDirection:'row',justifyContent:'space-between',flex:1,marginTop:20}}>
-                      <Button style={{backgroundColor:'rgba(0, 160, 116, 1)',color:'white',borderRadius:10}} labelStyle={{color:'white'}} onPress={() => navigation.navigate('CustomerDetails')}>Customer Info</Button>
-                      <Button style={{backgroundColor:'rgba(0, 160, 116, 1)',color:'white',marginLeft:40,borderRadius:10}} labelStyle={{color:'white'}} onPress={() => navigation.navigate('OrderedItems')}>View Order</Button>
+                      <Button style={{backgroundColor:'rgba(0, 160, 116, 1)',color:'white',borderRadius:10}} labelStyle={{color:'white'}} onPress={() => handleCustomerInfo(item.username,item.Date)}>Customer Info</Button>
+                      <Button style={{backgroundColor:'rgba(0, 160, 116, 1)',color:'white',marginLeft:40,borderRadius:10}} labelStyle={{color:'white'}} onPress={() => handleOrderInfo(item.username,item.Date)}>View Order</Button>
                   </View>
               </View>
           )}
@@ -84,10 +147,11 @@ function MenuScreen() {
           return {ID: index + 1, Name: item};
         });
         setFoodList(updatedFoodList);
-        console.log("dummy array",dummyArr);
+        //console.log("dummy array",dummyArr);
       });
 
     return () => unsubscribe();
+    //getOrderDetails();
   }, [selectItemType]);
 
   var itemType = [
@@ -100,7 +164,12 @@ function MenuScreen() {
     
 
     const removeItem = (name) =>{
-      if(foodList.includes(name)){
+      console.log("remove item func called")
+      console.log("foodlist in remove item",foodList)
+
+    
+      if(dummyArr.includes(name)){
+
         var dltarr = dummyArr;
         console.log("dlt function started")
         const index = dltarr.indexOf(name);
@@ -110,13 +179,18 @@ function MenuScreen() {
           console.log('arr cart in dlt func',dltarr);
           setDummyArr(dltarr)
           console.log('dummyArr inside removeItem',dummyArr);
-          // firestore().collection('menu2').doc(selectItemType).update({
-          //   item:dummyArr,
-          // });
+          firestore().collection('menu2').doc(selectItemType).update({
+             item:dummyArr,
+           });
         }
         
       }
+
+
+
+
     } ; 
+    
 
 return (
   <ScrollView nestedScrollEnabled={true}>
@@ -141,7 +215,7 @@ return (
           renderItem={({item}) => (
               <View style={{flex: 1, backgroundColor: 'white', padding: 16,borderRadius:20,marginVertical:15,marginHorizontal:30}}>
                       <Text style={{fontSize:20,fontWeight:'bold'}}>{item.Name}</Text>
-                      <Button style={{backgroundColor:'rgba(160, 0, 44, 1)',color:'white',marginLeft:210,borderRadius:10}} labelStyle={{color:'white'}} onPress={removeItem(item.Name)} >Remove</Button>
+                      <Button style={{backgroundColor:'rgba(160, 0, 44, 1)',color:'white',marginLeft:210,borderRadius:10}} labelStyle={{color:'white'}} onPress={() => removeItem(item.Name)} >Remove</Button>
               </View>
           )}
           keyExtractor={item => item.ID}

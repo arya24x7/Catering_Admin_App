@@ -1,23 +1,60 @@
 import { StyleSheet, Text, View, FlatList,ScrollView } from 'react-native'
-import React from 'react'
+import React,{useEffect,useState}from 'react'
 import {useNavigation} from '@react-navigation/native';
 import { Appbar } from 'react-native-paper';
+import firestore from '@react-native-firebase/firestore';
 
-const ListFoodItems = () => {
+const ListFoodItems = ({route}) => {
+  const [foodList,setFoodList] = useState([])
+
 
     const navigation = useNavigation();
+    const {date,userID,chooseTime} = route.params;
+    const fetchOrderDetails = async (selectedUserID, selectedDate,selectedTime) => {
+      console.log(selectedDate,selectedUserID ,selectedTime)
+      try {
+        console.log(selectedDate,selectedUserID ,selectedTime)
+        const documentSnapshot = await firestore()
+          .collection('orderDetails')
+          .doc(selectedUserID)
+          .collection(selectedDate)
+          .doc('details')
+          .collection(selectedTime)
+          .doc("items")
+          .get()
 
-    const foodList = [
-        {ID: 1 , Name: "Qrst"},
-        {ID: 2 , Name: "Abcd"},
-        {ID: 3 , Name: "Wxyz"},
-        {ID: 4 , Name: "Mnop"},
-      ];
+        const foodArr = documentSnapshot.data().name
+        console.log(foodArr)
+        const foodFormat = foodArr.map((name, index) => ({ ID: index + 1, Name: name}))
+        setFoodList(foodFormat)
+
+         // console.log(documentSnapshot.data())
+    
+        // if (documentSnapshot.exists) {
+        //   const {bfCount,lunchCount,snacksCount,dinnerCount} = documentSnapshot.data();
+        //   console.log(bfCount,lunchCount)
+         
+          
+        
+         // console.log("lo",location);
+          // Process the retrieved data here
+         
+      } catch (error) {
+        console.log('Error fetching order details:', error);
+      }
+    };
+
+    useEffect(()=>{
+      fetchOrderDetails(userID,date,chooseTime);
+    },[]);
+    
+
+    
 
   return (
     <ScrollView nestedScrollEnabled={true}>
         <Appbar.Header>
-            <Appbar.BackAction onPress={() => {navigation.navigate("OrderedItems")}} />
+            <Appbar.BackAction onPress={() => {navigation.navigate("OrderedItems",{date,userID})}} />
             <Appbar.Content titleStyle={{marginLeft:200,fontWeight:'bold',fontSize:24}} title="Food Items"/>
           </Appbar.Header>
         <FlatList
